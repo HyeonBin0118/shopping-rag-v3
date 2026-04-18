@@ -1,9 +1,0 @@
-streamlit==1.45.0
-langchain==0.3.25
-langchain-chroma==0.2.4
-langchain-openai==0.3.16
-langchain-core==0.3.60
-chromadb==1.5.7
-openai==1.82.0
-cohere==5.15.0
-tqdm==4.67.1
