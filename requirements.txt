@@ -1,0 +1,9 @@
+streamlit
+langchain
+langchain-chroma
+langchain-openai
+langchain-core
+chromadb
+openai
+cohere
+tqdm
