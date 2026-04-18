@@ -12,6 +12,7 @@ RAG 챗봇 4단계: Streamlit UI
 """
 
 import os
+import json
 import streamlit as st
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -19,6 +20,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 import cohere
+import chromadb
 from multimodal_search import multimodal_product_search
 
 # ── 설정 ──────────────────────────────────────────
@@ -254,6 +256,45 @@ def init_rag():
         model="text-embedding-3-small",
         api_key=OPENAI_API_KEY
     )
+
+    # chroma_db 없으면 chunks_combined.jsonl로 자동 임베딩 생성
+    chroma_client = chromadb.PersistentClient(path=CHROMA_DIR)
+    existing = [c.name for c in chroma_client.list_collections()]
+
+    if COLLECTION not in existing:
+        st.info("벡터 DB 초기화 중... 약 1분 소요됩니다.")
+        collection = chroma_client.create_collection(
+            name=COLLECTION,
+            metadata={"hnsw:space": "cosine"}
+        )
+        # chunks_combined.jsonl 로드 및 임베딩
+        chunks = []
+        with open("chunks_combined.jsonl", "r", encoding="utf-8") as f:
+            for line in f:
+                chunks.append(json.loads(line.strip()))
+
+        # 중복 제거
+        seen = set()
+        unique = []
+        for c in chunks:
+            doc_id = c.get("doc_id") or c.get("id")
+            if doc_id not in seen:
+                seen.add(doc_id)
+                unique.append(c)
+
+        # 배치 임베딩
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        batch_size = 100
+        for i in range(0, len(unique), batch_size):
+            batch = unique[i:i+batch_size]
+            texts = [c["text"] for c in batch]
+            ids = [c.get("doc_id") or c.get("id") for c in batch]
+            metadatas = [{"source": c.get("source", ""), "category": c.get("category", "")} for c in batch]
+            resp = client.embeddings.create(model="text-embedding-3-small", input=texts)
+            embs = [d.embedding for d in resp.data]
+            collection.add(ids=ids, documents=texts, embeddings=embs, metadatas=metadatas)
+
     vectorstore = Chroma(
         collection_name=COLLECTION,
         embedding_function=embeddings,
