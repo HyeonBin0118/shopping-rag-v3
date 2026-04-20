@@ -355,7 +355,7 @@ def translate_query(q):
 def build_history(messages: list, max_turns: int = 3) -> str:
     """
     최근 N턴의 대화 히스토리를 문자열로 변환
-    - max_turns: 포함할 최대 대화 턴 수 (너무 많으면 토큰 낭비)
+    - max_turns: 포함할 최대 대화 턴 수 
     - 현재 질문 제외, 이전 대화만 포함
     """
     if not messages:
